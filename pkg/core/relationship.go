@@ -812,11 +812,11 @@ func (q *QueryExecutor) processRelationship(rel *Relationship, c *MatchClause, r
 	var filteredDirection Direction
 
 	resultMapMutex.RLock()
-	if rule.KindA == rightKind.Resource {
+	if rule.KindA == rightKind.Resource || rule.KindA == fmt.Sprintf("%s.%s", rightKind.Resource, rightKind.Group) {
 		resourcesA = getResourcesFromMap(filteredResults, rel.RightNode.ResourceProperties.Name)
 		resourcesB = getResourcesFromMap(filteredResults, rel.LeftNode.ResourceProperties.Name)
 		filteredDirection = Left
-	} else if rule.KindA == leftKind.Resource {
+	} else if rule.KindA == leftKind.Resource || rule.KindA == fmt.Sprintf("%s.%s", rightKind.Resource, rightKind.Group) {
 		resourcesA = getResourcesFromMap(filteredResults, rel.LeftNode.ResourceProperties.Name)
 		resourcesB = getResourcesFromMap(filteredResults, rel.RightNode.ResourceProperties.Name)
 		filteredDirection = Right
