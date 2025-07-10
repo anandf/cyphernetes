@@ -1216,7 +1216,7 @@ func (p *APIServerProvider) initGVRCache() error {
 			// Exclude internal resources like bindings, tokenreviews etc. which has only `create` verb
 			// and does not include `get` or `list` as they cannot be queried.
 			if strings.Contains(fmt.Sprintf("%v", r.Verbs), "list") {
-				p.knownResourceKinds = append(p.knownResourceKinds, r.Name)
+				p.knownResourceKinds = append(p.knownResourceKinds, fmt.Sprintf("%s.%s", r.Name, r.Group))
 			}
 
 			// Store with kind as key
