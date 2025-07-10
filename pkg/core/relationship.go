@@ -14,6 +14,7 @@ import (
 	"github.com/avitaltamir/cyphernetes/pkg/provider/apiserver"
 	"github.com/gobwas/glob"
 	"gopkg.in/yaml.v2"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -80,31 +81,30 @@ func applyRelationshipRule(resourcesA, resourcesB []map[string]interface{}, rule
 }
 
 func containsResource(resources []map[string]interface{}, resource map[string]interface{}) bool {
-	metadata1, ok1 := resource["metadata"].(map[string]interface{})
-	if !ok1 {
-		return false
-	}
-	name1, ok1 := metadata1["name"].(string)
-	if !ok1 {
+	name1, name1Found, err := unstructured.NestedString(resource, "metadata", "name")
+	if err != nil || !name1Found {
 		return false
 	}
 
-	ns1, ok1 := metadata1["namespace"].(string)
-	if !ok1 {
+	ns1, ns1Found, err := unstructured.NestedString(resource, "metadata", "namespace")
+	if err != nil {
+		return false
+	}
+	if !ns1Found {
 		ns1 = ""
 	}
 
 	for _, res := range resources {
-		metadata2, ok2 := res["metadata"].(map[string]interface{})
-		if !ok2 {
+		name2, name2Found, err := unstructured.NestedString(res, "metadata", "name")
+		if err != nil || !name2Found {
 			continue
 		}
-		name2, ok2 := metadata2["name"].(string)
-		if !ok2 {
+
+		ns2, ns2Found, err := unstructured.NestedString(res, "metadata", "namespace")
+		if err != nil {
 			continue
 		}
-		ns2, _ := metadata2["namespace"].(string)
-		if !ok2 {
+		if !ns2Found {
 			ns2 = ""
 		}
 		if name1 == name2 && ns1 == ns2 {
@@ -751,6 +751,15 @@ func (q *QueryExecutor) processRelationship(rel *Relationship, c *MatchClause, r
 	if relType == "" {
 		matchingRules := findRelationshipRulesBetweenKinds(leftKind.Resource, rightKind.Resource)
 
+		if len(matchingRules) == 0 {
+			matchingRules = findRelationshipRulesBetweenKinds(fmt.Sprintf("%s.%s", leftKind.Resource, leftKind.Group), rightKind.Resource)
+		}
+		if len(matchingRules) == 0 {
+			matchingRules = findRelationshipRulesBetweenKinds(fmt.Sprintf("%s.%s", leftKind.Resource, leftKind.Group), fmt.Sprintf("%s.%s", rightKind.Resource, rightKind.Group))
+		}
+		if len(matchingRules) == 0 {
+			matchingRules = findRelationshipRulesBetweenKinds(leftKind.Resource, fmt.Sprintf("%s.%s", rightKind.Resource, rightKind.Group))
+		}
 		if len(matchingRules) == 0 {
 			// No relationship type found, error out
 			return false, fmt.Errorf("relationship type not found between %s and %s", leftKind.Resource, rightKind.Resource)
